@@ -3481,7 +3481,7 @@ local function makeColumn(window, parent, side, topOffset)
         CanvasSize = UDim2.new(),
         ClipsDescendants = true,
         Active = true,
-        AutomaticCanvasSize = Enum.AutomaticSize.None,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
         ScrollingEnabled = true,
         ScrollBarThickness = 0,
         ScrollBarImageTransparency = 1,
@@ -3547,14 +3547,10 @@ local function makeColumn(window, parent, side, topOffset)
             end
         end
 
-        local maxCanvasY = math.max(0, layout.AbsoluteContentSize.Y + 8 - column.AbsoluteSize.Y)
-        local canvasPosition = column.CanvasPosition
-        column.CanvasPosition = Vector2.new(0, math.clamp(canvasPosition.Y, 0, maxCanvasY))
         refreshing = false
     end
 
     table.insert(window._columnRefreshers, refreshViewport)
-    window:_connect(column:GetPropertyChangedSignal("CanvasPosition"), refreshViewport)
     window:_connect(layout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
         task.defer(refreshViewport)
     end)

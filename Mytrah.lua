@@ -933,6 +933,10 @@ function Window:_updateResponsiveLayout()
         if not leftViewport or not rightViewport then
             return
         end
+        owner.LeftColumn.ScrollBarThickness = mobile and 4 or 0
+        owner.LeftColumn.ScrollBarImageTransparency = mobile and 0.35 or 1
+        owner.RightColumn.ScrollBarThickness = mobile and 4 or 0
+        owner.RightColumn.ScrollBarImageTransparency = mobile and 0.35 or 1
         local parent = leftViewport and leftViewport.Parent
         local leftMask = parent and parent:FindFirstChild("LeftTopMask")
         local rightMask = parent and parent:FindFirstChild("RightTopMask")
@@ -3476,7 +3480,9 @@ local function makeColumn(window, parent, side, topOffset)
         BorderSizePixel = 0,
         CanvasSize = UDim2.new(),
         ClipsDescendants = true,
+        Active = true,
         AutomaticCanvasSize = Enum.AutomaticSize.None,
+        ScrollingEnabled = true,
         ScrollBarThickness = 0,
         ScrollBarImageTransparency = 1,
         ScrollingDirection = Enum.ScrollingDirection.Y,
@@ -3512,63 +3518,38 @@ local function makeColumn(window, parent, side, topOffset)
             return
         end
         refreshing = true
-        local topEdge = column.AbsolutePosition.Y
-        local bottomEdge = topEdge + column.AbsoluteSize.Y
+
+        column.CanvasSize = UDim2.fromOffset(0, layout.AbsoluteContentSize.Y + 8)
         for _, sectionFrame in ipairs(column:GetChildren()) do
             local body = sectionFrame:IsA("Frame") and sectionFrame:FindFirstChild("Body")
             if body then
-                local sectionTop = sectionFrame.AbsolutePosition.Y
-                local sectionBottom = sectionTop + sectionFrame.AbsoluteSize.Y
-                local headerVisible = sectionBottom > topEdge and sectionTop < bottomEdge
+                local sectionVisible = sectionFrame.Visible
                 local surface = sectionFrame:FindFirstChild("Surface")
                 local header = sectionFrame:FindFirstChild("Header")
                 local divider = sectionFrame:FindFirstChild("Divider")
                 if surface then
-                    surface.Visible = headerVisible
+                    surface.Visible = sectionVisible
                 end
                 if header then
-                    header.Visible = headerVisible
+                    header.Visible = sectionVisible
                 end
                 if divider then
-                    divider.Visible = headerVisible
+                    divider.Visible = sectionVisible
                 end
 
                 for _, row in ipairs(body:GetChildren()) do
-                    if row:IsA("GuiObject") and not row:IsA("UIListLayout")
-                        and not row.Name:match("^ViewportSpacer_")
-                    then
-                        local baseVisible = row:GetAttribute("MytrahBaseVisible") ~= false
-                        local rowTop = row.AbsolutePosition.Y
-                        local rowBottom = rowTop + row.AbsoluteSize.Y
-                        local inside = rowTop >= topEdge and rowBottom <= bottomEdge
-                        local spacer = body:FindFirstChild("ViewportSpacer_" .. row.Name)
-                        if baseVisible and not inside then
-                            if not spacer then
-                                spacer = create("Frame", {
-                                    Name = "ViewportSpacer_" .. row.Name,
-                                    Size = row.Size,
-                                    BackgroundTransparency = 1,
-                                    BorderSizePixel = 0,
-                                    LayoutOrder = row.LayoutOrder,
-                                    Parent = body,
-                                })
-                            end
-                            row.Visible = false
-                        elseif baseVisible then
-                            if spacer then
-                                spacer:Destroy()
-                            end
-                            row.Visible = true
-                        else
-                            if spacer then
-                                spacer:Destroy()
-                            end
-                            row.Visible = false
-                        end
+                    if row.Name:match("^ViewportSpacer_") then
+                        row:Destroy()
+                    elseif row:IsA("GuiObject") and not row:IsA("UIListLayout") then
+                        row.Visible = row:GetAttribute("MytrahBaseVisible") ~= false
                     end
                 end
             end
         end
+
+        local maxCanvasY = math.max(0, layout.AbsoluteContentSize.Y + 8 - column.AbsoluteSize.Y)
+        local canvasPosition = column.CanvasPosition
+        column.CanvasPosition = Vector2.new(0, math.clamp(canvasPosition.Y, 0, maxCanvasY))
         refreshing = false
     end
 
